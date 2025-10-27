@@ -1,0 +1,35 @@
+train:  # train set path
+val:  # valid set path
+save_path:  # save model path
+model : resnet152  # Model Type
+weights:  # Pretrain Model Path
+batch_size: 8
+image_size: (224, 224)
+num_classes: 23  # number of classes
+class_names: [
+    'yunzhuoT12',
+    'Vbar',
+    'Tarains_Plus_FLY',
+    'RadioLinkAT9S',
+    'Phantom4ProRTK',
+    'Phantom4Pro',
+    'Phantom3',
+    'Mini3Pro',
+    'Mini2',
+    'MavicPro',
+    'Mavic3',
+    'Matrice600Pro',
+    'Matrice300',
+    'Matrice200',
+    'Matrice100',
+    'Matrice30T',
+    'Inspire2',
+    'FutabaT61Z',
+    'FutabaT14SG',
+    'FrskyX20',
+    'DJi',
+    'AVATA',
+    'Air2S'
+]  # class names
+device: 'cuda' # device
+epochs: 100
