@@ -1,0 +1,116 @@
+{
+  "example_1_basic": {
+    "description": "基础ResNet18训练示例",
+    "request": {
+      "model": "resnet18",
+      "num_classes": 37,
+      "train_path": "data/train",
+      "val_path": "data/val",
+      "batch_size": 32,
+      "num_epochs": 100,
+      "learning_rate": 0.0001,
+      "image_size": 224,
+      "device": "cuda",
+      "save_path": "models/resnet18_basic",
+      "shuffle": true,
+      "pretrained": true
+    }
+  },
+  "example_2_mobilenet": {
+    "description": "MobileNet轻量级模型训练",
+    "request": {
+      "model": "mobilenet_v3_small",
+      "num_classes": 37,
+      "train_path": "data/train",
+      "val_path": "data/val",
+      "batch_size": 64,
+      "num_epochs": 150,
+      "learning_rate": 0.001,
+      "image_size": 224,
+      "device": "cuda",
+      "save_path": "models/mobilenet_v3",
+      "shuffle": true,
+      "pretrained": true,
+      "description": "使用MobileNetV3小型模型"
+    }
+  },
+  "example_3_vit": {
+    "description": "Vision Transformer训练",
+    "request": {
+      "model": "vit_b_16",
+      "num_classes": 37,
+      "train_path": "data/train",
+      "val_path": "data/val",
+      "batch_size": 16,
+      "num_epochs": 100,
+      "learning_rate": 0.00001,
+      "image_size": 224,
+      "device": "cuda",
+      "save_path": "models/vit_b16",
+      "shuffle": true,
+      "pretrained": true,
+      "description": "Vision Transformer Base模型"
+    }
+  },
+  "example_4_resnet50_large_batch": {
+    "description": "ResNet50大批次训练",
+    "request": {
+      "model": "resnet50",
+      "num_classes": 37,
+      "train_path": "data/train",
+      "val_path": "data/val",
+      "batch_size": 128,
+      "num_epochs": 200,
+      "learning_rate": 0.001,
+      "image_size": 224,
+      "device": "cuda",
+      "save_path": "models/resnet50_large",
+      "shuffle": true,
+      "pretrained": true,
+      "weight_path": "",
+      "description": "大批次ResNet50训练"
+    }
+  },
+  "example_5_fine_tuning": {
+    "description": "微调预训练模型",
+    "request": {
+      "model": "resnet34",
+      "num_classes": 37,
+      "train_path": "data/train",
+      "val_path": "data/val",
+      "batch_size": 32,
+      "num_epochs": 50,
+      "learning_rate": 0.00001,
+      "image_size": 224,
+      "device": "cuda",
+      "save_path": "models/resnet34_finetuned",
+      "weight_path": "models/resnet34_pretrained/best_model.pth",
+      "shuffle": true,
+      "pretrained": false,
+      "description": "基于已有模型进行微调"
+    }
+  },
+  "example_6_swin_transformer": {
+    "description": "Swin Transformer训练",
+    "request": {
+      "model": "swin_v2_t",
+      "num_classes": 37,
+      "train_path": "data/train",
+      "val_path": "data/val",
+      "batch_size": 32,
+      "num_epochs": 100,
+      "learning_rate": 0.0001,
+      "image_size": 224,
+      "device": "cuda",
+      "save_path": "models/swin_v2_tiny",
+      "shuffle": true,
+      "pretrained": true,
+      "description": "Swin Transformer V2 Tiny"
+    }
+  },
+  "curl_examples": {
+    "basic_training": "curl -X POST \"http://localhost:8000/api/v2/train\" -H \"Content-Type: application/json\" -d '{\"model\": \"resnet18\", \"num_classes\": 37, \"train_path\": \"data/train\", \"val_path\": \"data/val\", \"batch_size\": 32, \"num_epochs\": 100, \"learning_rate\": 0.0001, \"image_size\": 224, \"device\": \"cuda\", \"save_path\": \"models/resnet18_exp\", \"shuffle\": true, \"pretrained\": true}'",
+    "check_status": "curl \"http://localhost:8000/api/v1/tasks/{task_id}\"",
+    "stream_logs": "curl -N \"http://localhost:8000/api/v2/train/{task_id}/logs\""
+  }
+}
