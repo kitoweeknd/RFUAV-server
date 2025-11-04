@@ -43,6 +43,7 @@
     │
     └── /resources/                # 资源管理
         ├── /                      # 资源状态
+        ├── /cpu                   # CPU信息 ⭐新
         ├── /gpu                   # GPU信息
         └── /config                # 更新配置
 ```
@@ -402,6 +403,7 @@ curl http://localhost:8000/api/v2/preprocessing/{task_id}/logs
   "train_path": "data/train",
   "val_path": "data/val",
   "save_path": "models/output",
+  "name": "exp_train_001",
   "batch_size": 16,
   "num_epochs": 50,
   "learning_rate": 0.0001,
@@ -422,6 +424,7 @@ curl http://localhost:8000/api/v2/preprocessing/{task_id}/logs
 - `train_path`: 训练集路径（必需）
 - `val_path`: 验证集路径（必需）
 - `save_path`: 模型保存路径（必需）
+- `name`: 自定义保存名称（可选，将作为子目录附加到保存路径）
 - `batch_size`: 批次大小，默认8
 - `num_epochs`: 训练轮数，默认100
 - `learning_rate`: 学习率，默认0.0001
@@ -584,6 +587,7 @@ curl -X POST "http://localhost:8000/api/v2/training/{task_id}/stop"
   "weight_path": "models/best.pth",fres
   "source_path": "data/test",
   "save_path": "results/",
+  "name": "exp_infer_001",
   "device": "cuda",
   "priority": 3
 }
@@ -594,6 +598,7 @@ curl -X POST "http://localhost:8000/api/v2/training/{task_id}/stop"
 - `weight_path`: 模型权重路径（必需）
 - `source_path`: 待推理数据路径（必需）
 - `save_path`: 结果保存路径（可选）
+- `name`: 自定义保存名称（可选，将作为子目录附加到保存路径）
 - `device`: 设备 (cuda/cpu)，默认cuda
 - `priority`: 优先级，默认3
 
@@ -875,6 +880,29 @@ curl http://localhost:8000/api/v2/resources
 **示例**:
 ```bash
 curl http://localhost:8000/api/v2/resources/gpu
+```
+
+---
+
+### `GET /api/v2/resources/cpu` ⭐新
+**功能**: 获取CPU与内存关键指标
+
+**响应**:
+```json
+{
+  "percent": 23.5,
+  "per_cpu_percent": [12.3, 34.5, 18.0, 29.1],
+  "cores": 8,
+  "physical_cores": 4,
+  "freq_mhz": 3292.0,
+  "load_avg": {"1": 0.85, "5": 0.72, "15": 0.60},
+  "memory_percent": 41.8
+}
+```
+
+**示例**:
+```bash
+curl http://localhost:8000/api/v2/resources/cpu
 ```
 
 ---

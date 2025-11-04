@@ -191,6 +191,7 @@ class TrainingService(BaseService):
             task_type="training",
             device=request.device,
             priority=request.priority,
+            name=getattr(request, 'name', None),
             model=request.model,
             total_epochs=request.num_epochs
         )
@@ -230,12 +231,16 @@ class TrainingService(BaseService):
             self.add_log(task_id, "INFO", f"资源已分配，使用设备: {actual_device}")
             self.add_log(task_id, "INFO", "开始训练...")
             
-            os.makedirs(request.save_path, exist_ok=True)
+            # 计算最终保存路径：base/save_name
+            base_save = request.save_path if request.save_path else os.path.join("models", "output")
+            final_save_path = os.path.join(base_save, request.name) if getattr(request, 'name', None) else base_save
+            os.makedirs(final_save_path, exist_ok=True)
             
             self.add_log(task_id, "INFO", f"模型: {request.model}")
             self.add_log(task_id, "INFO", f"设备: {actual_device}")
             self.add_log(task_id, "INFO", f"批次大小: {request.batch_size}")
             self.add_log(task_id, "INFO", f"训练轮数: {request.num_epochs}")
+            self.add_log(task_id, "INFO", f"保存目录: {final_save_path}")
             
             def check_cancelled():
                 """检查任务是否被取消"""
@@ -247,7 +252,7 @@ class TrainingService(BaseService):
                 train_path=request.train_path,
                 val_path=request.val_path,
                 num_class=request.num_classes,
-                save_path=request.save_path,
+                save_path=final_save_path,
                 weight_path=request.weight_path,
                 device=actual_device,
                 batch_size=request.batch_size,

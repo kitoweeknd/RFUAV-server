@@ -266,6 +266,49 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #718096;
         }
+
+        /* 资源监控-进度条 */
+        .progress {
+            width: 100%;
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #cbd5e0;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #48bb78, #38a169);
+            transition: width 0.3s ease;
+        }
+
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .metric-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .metric-title {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 8px;
+        }
+
+        .metric-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
     </style>
 </head>
 <body>
@@ -331,6 +374,80 @@
                     <button class="btn-primary" id="startBtn" onclick="startTraining()">启动训练</button>
                     <button class="btn-secondary" id="monitorBtn" onclick="monitorTask()" disabled>监控任务</button>
                 </div>
+
+                <h2 style="margin-top:24px;">数据预处理</h2>
+
+                <!-- 数据集分割 -->
+                <div class="form-group" style="margin-top:10px;">
+                    <label><strong>数据集分割 (POST /api/v2/preprocessing/split)</strong></label>
+                    <div class="form-group">
+                        <label for="split_input_path">输入路径</label>
+                        <input type="text" id="split_input_path" value="data/raw_dataset">
+                    </div>
+                    <div class="form-group">
+                        <label for="split_output_path">输出路径</label>
+                        <input type="text" id="split_output_path" value="data/split_dataset">
+                    </div>
+                    <div class="form-group">
+                        <label for="split_train_ratio">训练集比例 (0.1-0.9)</label>
+                        <input type="number" id="split_train_ratio" value="0.8" step="0.05" min="0.1" max="0.9">
+                    </div>
+                    <div class="form-group">
+                        <label for="split_val_ratio">验证集比例 (可选)</label>
+                        <input type="number" id="split_val_ratio" value="0.2" step="0.05" min="0" max="0.9">
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="startSplit()">启动分割</button>
+                        <button class="btn-secondary" onclick="monitorPreprocessTask()">监控预处理任务</button>
+                    </div>
+                </div>
+
+                <!-- 数据增强 -->
+                <div class="form-group" style="margin-top:16px;">
+                    <label><strong>数据增强 (POST /api/v2/preprocessing/augment)</strong></label>
+                    <div class="form-group">
+                        <label for="augment_dataset_path">数据集路径</label>
+                        <input type="text" id="augment_dataset_path" value="data/split_dataset">
+                    </div>
+                    <div class="form-group">
+                        <label for="augment_output_path">输出路径 (可选)</label>
+                        <input type="text" id="augment_output_path" value="data/augmented_dataset">
+                    </div>
+                    <div class="form-group">
+                        <label for="augment_methods">方法列表 (逗号分隔)</label>
+                        <input type="text" id="augment_methods" value="CLAHE,ColorJitter,GaussNoise">
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="startAugment()">启动增强</button>
+                        <button class="btn-secondary" onclick="monitorPreprocessTask()">监控预处理任务</button>
+                    </div>
+                </div>
+
+                <!-- 图像裁剪 -->
+                <div class="form-group" style="margin-top:16px;">
+                    <label><strong>图像裁剪 (POST /api/v2/preprocessing/crop)</strong></label>
+                    <div class="form-group">
+                        <label for="crop_input_path">输入路径 (文件或目录)</label>
+                        <input type="text" id="crop_input_path" value="data/images">
+                    </div>
+                    <div class="form-group">
+                        <label for="crop_output_path">输出路径</label>
+                        <input type="text" id="crop_output_path" value="data/cropped">
+                    </div>
+                    <div class="form-group">
+                        <label>裁剪参数 (x, y, width, height)</label>
+                        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                            <input type="number" id="crop_x" value="100" min="0">
+                            <input type="number" id="crop_y" value="100" min="0">
+                            <input type="number" id="crop_w" value="500" min="1">
+                            <input type="number" id="crop_h" value="500" min="1">
+                        </div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn-primary" onclick="startCrop()">启动裁剪</button>
+                        <button class="btn-secondary" onclick="monitorPreprocessTask()">监控预处理任务</button>
+                    </div>
+                </div>
             </div>
 
             <!-- 监控面板 -->
@@ -355,6 +472,31 @@
                     </div>
                 </div>
 
+                <div class="status-bar">
+                    <h3>资源监控</h3>
+                    <div class="resource-grid" style="margin-top: 10px;">
+                        <div class="metric-card">
+                            <div class="metric-title">CPU 使用率</div>
+                            <div class="metric-value"><span id="cpuPercentText">-</span></div>
+                            <div class="progress" aria-label="CPU 使用率">
+                                <div id="cpuProgressBar" class="progress-bar"></div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">CPU 内存占用</div>
+                            <div class="metric-value"><span id="memPercentText">-</span></div>
+                            <div class="progress" aria-label="内存 使用率">
+                                <div id="memProgressBar" class="progress-bar" style="background: linear-gradient(90deg, #667eea, #5568d3);"></div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-title">核心/频率</div>
+                            <div class="metric-value" id="cpuMeta">-</div>
+                            <div style="font-size:12px;color:#718096;" id="cpuLoad">负载: -</div>
+                        </div>
+                    </div>
+                </div>
+
                 <h3 style="margin-bottom: 10px; color: #2d3748;">实时日志</h3>
                 <div class="logs-container" id="logsContainer">
                     <div class="empty-state">
@@ -362,6 +504,36 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         <p>等待训练开始...</p>
+                    </div>
+                </div>
+
+                <div class="status-bar" style="margin-top:20px;">
+                    <h3>预处理任务状态</h3>
+                    <div class="status-info">
+                        <div class="status-item">
+                            <div class="label">任务ID</div>
+                            <div class="value" id="prepTaskId">-</div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">状态</div>
+                            <div class="value" id="prepTaskStatus">
+                                <span class="status-badge status-pending">未开始</span>
+                            </div>
+                        </div>
+                        <div class="status-item">
+                            <div class="label">进度</div>
+                            <div class="value" id="prepTaskProgress">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 10px; color: #2d3748;">预处理实时日志</h3>
+                <div class="logs-container" id="prepLogsContainer">
+                    <div class="empty-state">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p>等待预处理开始...</p>
                     </div>
                 </div>
             </div>
@@ -372,6 +544,9 @@
         const API_BASE = 'http://localhost:8000';
         let currentTaskId = null;
         let eventSource = null;
+        let cpuTimer = null;
+        let currentPrepTaskId = null;
+        let prepEventSource = null;
 
         async function startTraining() {
             const config = {
@@ -507,6 +682,135 @@
             }
         }
 
+        // ===== 预处理：启动与监控 =====
+        async function startSplit() {
+            const payload = {
+                input_path: document.getElementById('split_input_path').value,
+                output_path: document.getElementById('split_output_path').value,
+                train_ratio: parseFloat(document.getElementById('split_train_ratio').value),
+                val_ratio: parseFloat(document.getElementById('split_val_ratio').value)
+            };
+            await startPreprocess('/api/v2/preprocessing/split', payload, '数据集分割');
+        }
+
+        async function startAugment() {
+            const methodsRaw = document.getElementById('augment_methods').value.trim();
+            const methods = methodsRaw ? methodsRaw.split(',').map(m => m.trim()).filter(Boolean) : undefined;
+            const payload = {
+                dataset_path: document.getElementById('augment_dataset_path').value,
+                output_path: document.getElementById('augment_output_path').value,
+                methods
+            };
+            await startPreprocess('/api/v2/preprocessing/augment', payload, '数据增强');
+        }
+
+        async function startCrop() {
+            const payload = {
+                input_path: document.getElementById('crop_input_path').value,
+                output_path: document.getElementById('crop_output_path').value,
+                x: parseInt(document.getElementById('crop_x').value),
+                y: parseInt(document.getElementById('crop_y').value),
+                width: parseInt(document.getElementById('crop_w').value),
+                height: parseInt(document.getElementById('crop_h').value)
+            };
+            await startPreprocess('/api/v2/preprocessing/crop', payload, '图像裁剪');
+        }
+
+        async function startPreprocess(path, payload, label) {
+            try {
+                const resp = await fetch(`${API_BASE}${path}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!resp.ok) {
+                    const err = await resp.json().catch(() => ({}));
+                    throw new Error(err.message || `${label}启动失败`);
+                }
+                const data = await resp.json();
+                currentPrepTaskId = data.task_id || data.id || null;
+                if (!currentPrepTaskId) {
+                    addPrepLog('WARNING', `${label}已启动，但未返回任务ID`);
+                    return;
+                }
+                document.getElementById('prepTaskId').textContent = currentPrepTaskId.substring(0, 8) + '...';
+                updatePrepStatus('pending');
+                addPrepLog('INFO', `${label}任务已启动，任务ID: ${currentPrepTaskId}`);
+                startPrepLogStream(currentPrepTaskId);
+            } catch (e) {
+                addPrepLog('ERROR', e.message || '预处理启动失败');
+            }
+        }
+
+        function startPrepLogStream(taskId) {
+            if (prepEventSource) prepEventSource.close();
+            const container = document.getElementById('prepLogsContainer');
+            container.innerHTML = '';
+            prepEventSource = new EventSource(`${API_BASE}/api/v2/preprocessing/${taskId}/logs`);
+            prepEventSource.onmessage = (event) => {
+                try {
+                    const log = JSON.parse(event.data);
+                    const level = log.level || 'INFO';
+                    if (log.message) addPrepLog(level, log.message);
+                    if (log.status) {
+                        updatePrepStatus(log.status);
+                        if (['completed', 'failed', 'cancelled'].includes(log.status)) {
+                            prepEventSource.close();
+                        }
+                    }
+                    if (typeof log.progress === 'number') {
+                        document.getElementById('prepTaskProgress').textContent = `${log.progress}%`;
+                    }
+                } catch (_) {}
+            };
+            prepEventSource.onerror = (err) => {
+                addPrepLog('ERROR', '预处理日志流连接中断');
+                try { prepEventSource.close(); } catch (_) {}
+            };
+        }
+
+        function addPrepLog(level, message) {
+            const container = document.getElementById('prepLogsContainer');
+            const emptyState = container.querySelector('.empty-state');
+            if (emptyState) emptyState.remove();
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            const timestamp = new Date().toLocaleTimeString('zh-CN', {hour12: false});
+            logEntry.innerHTML = `
+                <span class="log-timestamp">${timestamp}</span>
+                <span class="log-level log-level-${level}">[${level}]</span>
+                <span class="log-message">${message}</span>
+            `;
+            container.appendChild(logEntry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updatePrepStatus(status) {
+            const el = document.getElementById('prepTaskStatus');
+            let badgeClass = 'status-pending';
+            let text = status;
+            switch(status) {
+                case 'pending': badgeClass = 'status-pending'; text = '等待中'; break;
+                case 'queued': badgeClass = 'status-pending'; text = '排队中'; break;
+                case 'running': badgeClass = 'status-running'; text = '进行中'; break;
+                case 'completed': badgeClass = 'status-completed'; text = '已完成'; break;
+                case 'failed': badgeClass = 'status-failed'; text = '失败'; break;
+                case 'cancelled': badgeClass = 'status-failed'; text = '已取消'; break;
+            }
+            el.innerHTML = `<span class="status-badge ${badgeClass}">${text}</span>`;
+        }
+
+        function monitorPreprocessTask() {
+            const taskId = prompt('请输入预处理任务ID:');
+            if (taskId) {
+                currentPrepTaskId = taskId;
+                document.getElementById('prepTaskId').textContent = taskId.substring(0, 8) + '...';
+                document.getElementById('prepLogsContainer').innerHTML = '';
+                addPrepLog('INFO', `开始监控预处理任务: ${taskId}`);
+                startPrepLogStream(taskId);
+            }
+        }
+
         // 页面加载时检查服务状态
         window.addEventListener('load', async () => {
             try {
@@ -517,7 +821,49 @@
                 addLog('ERROR', '无法连接到服务器，请确保服务已启动');
                 document.getElementById('startBtn').disabled = true;
             }
+
+            startCpuPolling();
         });
+
+        window.addEventListener('beforeunload', () => {
+            if (cpuTimer) clearInterval(cpuTimer);
+            if (eventSource) eventSource.close();
+            if (prepEventSource) prepEventSource.close();
+        });
+
+        async function fetchCpu() {
+            try {
+                const resp = await fetch(`${API_BASE}/api/v2/resources/cpu`);
+                if (!resp.ok) return;
+                const info = await resp.json();
+
+                const cpuPercent = Math.max(0, Math.min(100, Number(info.percent || 0)));
+                const memPercent = Math.max(0, Math.min(100, Number(info.memory_percent || 0)));
+
+                document.getElementById('cpuPercentText').textContent = cpuPercent.toFixed(1) + '%';
+                document.getElementById('memPercentText').textContent = memPercent.toFixed(1) + '%';
+
+                const cpuBar = document.getElementById('cpuProgressBar');
+                const memBar = document.getElementById('memProgressBar');
+                if (cpuBar) cpuBar.style.width = `${cpuPercent}%`;
+                if (memBar) memBar.style.width = `${memPercent}%`;
+
+                const cores = info.cores ?? '-';
+                const pcores = info.physical_cores ?? '-';
+                const freq = info.freq_mhz ? `${info.freq_mhz.toFixed(0)} MHz` : '-';
+                document.getElementById('cpuMeta').textContent = `${pcores}/${cores} 核 | ${freq}`;
+
+                const load = info.load_avg ? `${info.load_avg['1']?.toFixed?.(2) ?? '-'}, ${info.load_avg['5']?.toFixed?.(2) ?? '-'}, ${info.load_avg['15']?.toFixed?.(2) ?? '-'}` : '-';
+                document.getElementById('cpuLoad').textContent = `负载: ${load}`;
+            } catch (_) {
+                // 静默失败，避免打扰日志
+            }
+        }
+
+        function startCpuPolling() {
+            fetchCpu();
+            cpuTimer = setInterval(fetchCpu, 2000);
+        }
     </script>
 </body>
 </html>

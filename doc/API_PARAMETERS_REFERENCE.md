@@ -26,6 +26,7 @@
 | `train_path` | string | ✅ | - | - | 训练集路径 |
 | `val_path` | string | ✅ | - | - | 验证集路径 |
 | `save_path` | string | ✅ | - | - | 模型保存路径 |
+| `name` | string | ❌ | null | - | 自定义保存名称（作为子目录附加到保存路径） |
 | `batch_size` | integer | ❌ | 8 | ≥1 | 批次大小 |
 | `num_epochs` | integer | ❌ | 100 | ≥1 | 训练轮数 |
 | `learning_rate` | float | ❌ | 0.0001 | >0 | 学习率 |
@@ -153,6 +154,7 @@ Server-Sent Events (SSE) 流
 | `weight_path` | string | ✅ | - | - | 模型权重路径 (.pth) |
 | `source_path` | string | ✅ | - | - | 推理数据路径 |
 | `save_path` | string | ❌ | null | - | 结果保存路径 |
+| `name` | string | ❌ | null | - | 自定义保存名称（作为子目录附加到保存路径） |
 | `device` | string | ❌ | "cuda" | - | 推理设备 (cpu/cuda/cuda:0/cuda:1) |
 | `task_id` | string | ❌ | null | - | 自定义任务ID |
 | `priority` | integer | ❌ | 3 | 1-10 | 优先级 |
@@ -423,6 +425,39 @@ TaskActionResponse (同停止训练接口)
       }
     }
   ]
+}
+```
+
+---
+
+### GET /api/v2/resources/cpu - 获取CPU信息 ⭐新
+
+#### 查询参数
+
+无
+
+#### 响应字段
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `percent` | float | CPU总体使用率 (%) |
+| `per_cpu_percent` | array[float] | 各逻辑核使用率 (%) |
+| `cores` | integer | 逻辑核数 |
+| `physical_cores` | integer | 物理核数 |
+| `freq_mhz` | float | 当前频率 (MHz) |
+| `load_avg` | object | 平均负载 {"1":1分钟, "5":5分钟, "15":15分钟} |
+| `memory_percent` | float | 内存使用率 (%) |
+
+#### 示例
+```json
+{
+  "percent": 23.5,
+  "per_cpu_percent": [12.3, 34.5, 18.0, 29.1],
+  "cores": 8,
+  "physical_cores": 4,
+  "freq_mhz": 3292.0,
+  "load_avg": {"1": 0.85, "5": 0.72, "15": 0.60},
+  "memory_percent": 41.8
 }
 ```
 

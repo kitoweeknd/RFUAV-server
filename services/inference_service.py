@@ -40,7 +40,8 @@ class InferenceService(BaseService):
             0,
             task_type="inference",
             device=request.device,
-            priority=request.priority
+            priority=request.priority,
+            name=getattr(request, 'name', None)
         )
         
         background_tasks.add_task(self._inference_worker, task_id, request)
@@ -104,9 +105,13 @@ class InferenceService(BaseService):
                 model = Classify_Model(cfg=tmp_cfg_path, weight_path=request.weight_path)
                 
                 self.add_log(task_id, "INFO", f"推理数据: {request.source_path}")
+                base_save = request.save_path if request.save_path else "./results/"
+                final_save_path = os.path.join(base_save, request.name) if getattr(request, 'name', None) else base_save
+                os.makedirs(final_save_path, exist_ok=True)
+                self.add_log(task_id, "INFO", f"保存目录: {final_save_path}")
                 model.inference(
                     source=request.source_path,
-                    save_path=request.save_path or "./results/"
+                    save_path=final_save_path
                 )
                 
                 self.update_task_status(task_id, "completed", "推理完成", 100)

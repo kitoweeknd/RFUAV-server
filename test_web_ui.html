@@ -316,6 +316,12 @@
             font-weight: 600;
         }
 
+        .small-note {
+            font-size: 12px;
+            color: #666;
+            margin-top: 6px;
+        }
+
         .alert {
             padding: 12px;
             border-radius: 8px;
@@ -421,6 +427,30 @@
                     <p style="color: #999; grid-column: 1/-1; text-align: center;">点击按钮加载资源状态</p>
                 </div>
             </div>
+
+            <!-- CPU 与内存监控 -->
+            <div class="card">
+                <h2>🧠 CPU 与内存监控</h2>
+                <button class="btn btn-info" onclick="loadCPUInfo()">🔄 刷新CPU信息</button>
+                <div id="cpuInfo" class="gpu-info">
+                    <div style="margin-bottom:10px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;">
+                            <span>CPU 使用率</span>
+                            <span id="cpuPercentText">-</span>
+                        </div>
+                        <div class="progress-bar"><div id="cpuBar" class="progress-fill" style="width:0%">0%</div></div>
+                    </div>
+                    <div>
+                        <div style="display:flex;justify-content:space-between;font-size:13px;color:#666;">
+                            <span>内存 使用率</span>
+                            <span id="memPercentText">-</span>
+                        </div>
+                        <div class="progress-bar"><div id="memBar" class="progress-fill" style="width:0%">0%</div></div>
+                    </div>
+                    <div class="small-note" id="cpuMeta">核心/频率: -</div>
+                    <div class="small-note" id="cpuLoad">负载: -</div>
+                </div>
+            </div>
         </div>
 
         <div class="grid">
@@ -515,6 +545,94 @@
                 <button class="btn btn-secondary" onclick="startInference()">🔍 启动推理</button>
                 <div id="inferResult"></div>
             </div>
+
+            <!-- 数据预处理测试 -->
+            <div class="card">
+                <h2>🧹 数据预处理</h2>
+                <div class="form-group">
+                    <label><strong>数据集分割 (POST /api/v2/preprocessing/split)</strong></label>
+                </div>
+                <div class="form-group">
+                    <label>输入路径</label>
+                    <input type="text" id="split_input_path" value="data/raw_dataset">
+                </div>
+                <div class="form-group">
+                    <label>输出路径</label>
+                    <input type="text" id="split_output_path" value="data/split_dataset">
+                </div>
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>训练集比例</label>
+                        <input type="number" id="split_train_ratio" value="0.8" step="0.05" min="0.1" max="0.9">
+                    </div>
+                    <div class="form-group">
+                        <label>验证集比例</label>
+                        <input type="number" id="split_val_ratio" value="0.2" step="0.05" min="0" max="0.9">
+                    </div>
+                </div>
+                <button class="btn" onclick="startSplit()">✂️ 启动分割</button>
+
+                <div class="form-group" style="margin-top:16px;">
+                    <label><strong>数据增强 (POST /api/v2/preprocessing/augment)</strong></label>
+                </div>
+                <div class="form-group">
+                    <label>数据集路径</label>
+                    <input type="text" id="augment_dataset_path" value="data/split_dataset">
+                </div>
+                <div class="form-group">
+                    <label>输出路径 (可选)</label>
+                    <input type="text" id="augment_output_path" value="data/augmented_dataset">
+                </div>
+                <div class="form-group">
+                    <label>方法列表 (逗号分隔)</label>
+                    <input type="text" id="augment_methods" value="CLAHE,ColorJitter,GaussNoise">
+                </div>
+                <button class="btn" onclick="startAugment()">🧪 启动增强</button>
+
+                <div class="form-group" style="margin-top:16px;">
+                    <label><strong>图像裁剪 (POST /api/v2/preprocessing/crop)</strong></label>
+                </div>
+                <div class="form-group">
+                    <label>输入路径 (文件或目录)</label>
+                    <input type="text" id="crop_input_path" value="data/images">
+                </div>
+                <div class="form-group">
+                    <label>输出路径</label>
+                    <input type="text" id="crop_output_path" value="data/cropped">
+                </div>
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>X</label>
+                        <input type="number" id="crop_x" value="100" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Y</label>
+                        <input type="number" id="crop_y" value="100" min="0">
+                    </div>
+                </div>
+                <div class="two-column">
+                    <div class="form-group">
+                        <label>宽度</label>
+                        <input type="number" id="crop_w" value="500" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>高度</label>
+                        <input type="number" id="crop_h" value="500" min="1">
+                    </div>
+                </div>
+                <button class="btn" onclick="startCrop()">🖼️ 启动裁剪</button>
+
+                <div class="form-group" style="margin-top:16px;">
+                    <label>预处理任务ID</label>
+                    <input type="text" id="prepTaskIdInput" placeholder="输入预处理任务ID以监控日志">
+                </div>
+                <button class="btn btn-info" onclick="connectPrepLogs()">📡 连接预处理日志</button>
+                <button class="btn btn-secondary" onclick="disconnectPrepLogs()">⏹️ 断开预处理日志</button>
+                <div class="log-container" id="prepLogContainer" style="margin-top:10px;">
+                    <p style="color:#999;">等待启动或连接预处理日志...</p>
+                </div>
+                <div class="small-note" id="prepStatus">状态: - | 进度: 0%</div>
+            </div>
         </div>
 
         <!-- 任务列表和日志 -->
@@ -545,6 +663,8 @@
     <script>
         const API_BASE = 'http://localhost:8000';
         let logEventSource = null;
+        let prepEventSource = null;
+        let cpuInterval = null;
 
         // 检查连接
         async function checkConnection() {
@@ -659,6 +779,29 @@
             }
         }
 
+        // 加载CPU/内存信息
+        async function loadCPUInfo() {
+            try {
+                const response = await fetch(`${API_BASE}/api/v2/resources/cpu`);
+                if (!response.ok) return;
+                const info = await response.json();
+                const cpu = Math.max(0, Math.min(100, Number(info.percent || 0)));
+                const mem = Math.max(0, Math.min(100, Number(info.memory_percent || 0)));
+                document.getElementById('cpuBar').style.width = cpu + '%';
+                document.getElementById('cpuBar').textContent = cpu.toFixed(1) + '%';
+                document.getElementById('memBar').style.width = mem + '%';
+                document.getElementById('memBar').textContent = mem.toFixed(1) + '%';
+                document.getElementById('cpuPercentText').textContent = cpu.toFixed(1) + '%';
+                document.getElementById('memPercentText').textContent = mem.toFixed(1) + '%';
+                const cores = info.cores ?? '-';
+                const pcores = info.physical_cores ?? '-';
+                const freq = info.freq_mhz ? `${info.freq_mhz.toFixed(0)} MHz` : '-';
+                document.getElementById('cpuMeta').textContent = `核心/频率: ${pcores}/${cores} 核 | ${freq}`;
+                const load = info.load_avg ? `${(info.load_avg['1']||0).toFixed ? info.load_avg['1'].toFixed(2) : info.load_avg['1']}, ${(info.load_avg['5']||0).toFixed ? info.load_avg['5'].toFixed(2) : info.load_avg['5']}, ${(info.load_avg['15']||0).toFixed ? info.load_avg['15'].toFixed(2) : info.load_avg['15']}` : '-';
+                document.getElementById('cpuLoad').textContent = `负载: ${load}`;
+            } catch (_) {}
+        }
+
         // 启动训练
         async function startTraining() {
             const data = {
@@ -707,6 +850,106 @@
                     </div>
                 `;
             }
+        }
+
+        // ===== 数据预处理：启动 =====
+        async function startSplit() {
+            const payload = {
+                input_path: document.getElementById('split_input_path').value,
+                output_path: document.getElementById('split_output_path').value,
+                train_ratio: parseFloat(document.getElementById('split_train_ratio').value),
+                val_ratio: parseFloat(document.getElementById('split_val_ratio').value)
+            };
+            await startPreprocess('/api/v2/preprocessing/split', payload, '数据集分割');
+        }
+
+        async function startAugment() {
+            const methodsRaw = document.getElementById('augment_methods').value.trim();
+            const methods = methodsRaw ? methodsRaw.split(',').map(m => m.trim()).filter(Boolean) : undefined;
+            const payload = {
+                dataset_path: document.getElementById('augment_dataset_path').value,
+                output_path: document.getElementById('augment_output_path').value,
+                methods
+            };
+            await startPreprocess('/api/v2/preprocessing/augment', payload, '数据增强');
+        }
+
+        async function startCrop() {
+            const payload = {
+                input_path: document.getElementById('crop_input_path').value,
+                output_path: document.getElementById('crop_output_path').value,
+                x: parseInt(document.getElementById('crop_x').value),
+                y: parseInt(document.getElementById('crop_y').value),
+                width: parseInt(document.getElementById('crop_w').value),
+                height: parseInt(document.getElementById('crop_h').value)
+            };
+            await startPreprocess('/api/v2/preprocessing/crop', payload, '图像裁剪');
+        }
+
+        async function startPreprocess(path, payload, label) {
+            try {
+                const response = await fetch(`${API_BASE}${path}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const res = await response.json();
+                if (!response.ok) throw new Error(res.message || res.detail || `${label}启动失败`);
+                const taskId = res.task_id || res.id;
+                document.getElementById('prepTaskIdInput').value = taskId || '';
+                appendPrepLog('info', `✅ ${label}已启动: ${taskId}`);
+                if (taskId) connectPrepLogs();
+            } catch (e) {
+                appendPrepLog('error', `❌ ${label}失败: ${e.message}`);
+            }
+        }
+
+        // ===== 预处理日志SSE =====
+        function connectPrepLogs() {
+            const taskId = document.getElementById('prepTaskIdInput').value.trim();
+            if (!taskId) { alert('请输入预处理任务ID'); return; }
+            disconnectPrepLogs();
+            document.getElementById('prepLogContainer').innerHTML = '<p style="color:#4ec9b0;">📡 正在连接预处理日志流...</p>';
+            prepEventSource = new EventSource(`${API_BASE}/api/v2/preprocessing/${taskId}/logs`);
+            prepEventSource.onmessage = (event) => {
+                try {
+                    const log = JSON.parse(event.data);
+                    if (log.message) appendPrepLog((log.level||'info').toLowerCase(), log.message);
+                    if (typeof log.progress === 'number') updatePrepStatus(log.status, log.progress);
+                    if (log.status && ['completed','failed','cancelled'].includes(log.status)) {
+                        updatePrepStatus(log.status);
+                        disconnectPrepLogs();
+                    }
+                } catch (_) {}
+            };
+            prepEventSource.onerror = () => {
+                appendPrepLog('error', '预处理日志流连接中断');
+                disconnectPrepLogs();
+            };
+        }
+
+        function disconnectPrepLogs() {
+            if (prepEventSource) {
+                try { prepEventSource.close(); } catch (_) {}
+                prepEventSource = null;
+                appendPrepLog('info', '--- 预处理日志已断开 ---');
+            }
+        }
+
+        function appendPrepLog(level, message) {
+            const container = document.getElementById('prepLogContainer');
+            const div = document.createElement('div');
+            div.className = `log-entry ${level}`;
+            const ts = new Date().toLocaleTimeString('zh-CN', {hour12:false});
+            div.textContent = `[${ts}] ${message}`;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updatePrepStatus(status, progress) {
+            const el = document.getElementById('prepStatus');
+            const progText = typeof progress === 'number' ? `${progress}%` : '0%';
+            el.textContent = `状态: ${status || '-'} | 进度: ${progText}`;
         }
 
         // 启动推理
@@ -875,12 +1118,20 @@
             checkConnection();
             loadGPUInfo();
             loadResources();
+            loadCPUInfo();
+            cpuInterval = setInterval(loadCPUInfo, 2000);
         };
 
         // 定时刷新资源状态（每5秒）
         setInterval(() => {
             loadResources();
         }, 5000);
+
+        window.addEventListener('beforeunload', () => {
+            if (logEventSource) try { logEventSource.close(); } catch (_) {}
+            if (prepEventSource) try { prepEventSource.close(); } catch (_) {}
+            if (cpuInterval) clearInterval(cpuInterval);
+        });
     </script>
 </body>
 </html>

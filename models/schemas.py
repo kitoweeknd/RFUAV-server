@@ -18,6 +18,7 @@ class TrainingRequest(BaseModel):
     train_path: str = Field(..., description="训练集路径")
     val_path: str = Field(..., description="验证集路径")
     save_path: str = Field(..., description="模型保存路径")
+    name: Optional[str] = Field(None, description="自定义保存名称（会作为子目录名附加到保存路径）")
     
     # 训练参数
     batch_size: int = Field(default=8, description="批次大小", ge=1)
@@ -47,6 +48,7 @@ class InferenceRequest(BaseModel):
     weight_path: str = Field(..., description="模型权重路径")
     source_path: str = Field(..., description="数据路径")
     save_path: Optional[str] = Field(None, description="结果保存路径")
+    name: Optional[str] = Field(None, description="自定义保存名称（会作为子目录名附加到保存路径）")
     device: str = Field(
         default="cuda", 
         description="推理设备 (cpu/cuda/cuda:0/cuda:1/...)",
