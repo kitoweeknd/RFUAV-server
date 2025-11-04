@@ -1,6 +1,3 @@
-"""
-健康检查和系统信息路由
-"""
 from fastapi import APIRouter
 from datetime import datetime
 import logging
@@ -8,11 +5,12 @@ import logging
 from models.schemas import HealthResponse, InfoResponse
 from core.config import settings
 from core.resource_manager import resource_manager
-from services.task_service import TaskService
+from services import get_task_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-task_service = TaskService()
+task_service = get_task_service()
+
 
 
 @router.get("/health", response_model=HealthResponse, summary="健康检查")

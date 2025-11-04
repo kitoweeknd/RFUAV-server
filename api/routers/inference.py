@@ -1,6 +1,3 @@
-"""
-推理路由
-"""
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import logging
 
@@ -10,11 +7,11 @@ from models.schemas import (
     TaskResponse,
     BatchInferenceResponse
 )
-from services.inference_service import InferenceService
+from services import get_inference_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-inference_service = InferenceService()
+inference_service = get_inference_service()
 
 
 @router.post("/start", response_model=TaskResponse, summary="启动推理任务")

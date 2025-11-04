@@ -120,7 +120,7 @@ class F1Score(BaseMetric):
         Returns:
             dict[str, float]: The f1 scores. The keys are the names of the
             metrics, and the values are corresponding results. Possible
-            keys are 'micro_f1' and 'macro_f1'.
+            keys are 'micro_f1', 'macro_f1', 'precision', and 'recall'.
         """
 
         preds, gts = zip(*results)
@@ -129,12 +129,17 @@ class F1Score(BaseMetric):
 
         result = {}
         if 'macro' in self.mode:
-            result['macro_f1'] = self._compute_f1(
+            f1, precision, recall = self._compute_f1_precision_recall(
                 tp.sum(-1), fp.sum(-1), fn.sum(-1))
+            result['macro_f1'] = f1
+            result['macro_precision'] = precision
+            result['macro_recall'] = recall
         if 'micro' in self.mode:
-            result['micro_f1'] = self._compute_f1(tp.sum(), fp.sum(), fn.sum())
-
-        return result
+            f1, precision, recall = self._compute_f1_precision_recall(
+                tp.sum(), fp.sum(), fn.sum())
+            result['micro_f1'] = f1
+            result['micro_precision'] = precision
+            result['micro_recall'] = recall
 
     def _compute_f1(self, tp: np.ndarray, fp: np.ndarray,
                     fn: np.ndarray) -> float:
@@ -154,6 +159,23 @@ class F1Score(BaseMetric):
         f1 = 2 * precision * recall / (precision + recall).clip(min=1e-8)
         return float(f1.mean())
 
+    def _compute_f1_precision_recall(self, tp: np.ndarray, fp: np.ndarray,
+                                     fn: np.ndarray) -> tuple:
+        """Compute the F1-score, precision and recall based on the true positives,
+        false positives and false negatives.
+
+        Args:
+            tp (np.ndarray): The true positives.
+            fp (np.ndarray): The false positives.
+            fn (np.ndarray): The false negatives.
+
+        Returns:
+            tuple: (f1, precision, recall) as floats.
+        """
+        precision = tp / (tp + fp).clip(min=1e-8)
+        recall = tp / (tp + fn).clip(min=1e-8)
+        f1 = 2 * precision * recall / (precision + recall).clip(min=1e-8)
+        return float(f1.mean()), float(precision.mean()), float(recall.mean())
 
 # Usage-------------------------------------------------------------
 def main():

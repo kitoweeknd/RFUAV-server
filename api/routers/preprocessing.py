@@ -1,6 +1,3 @@
-"""
-数据预处理路由
-"""
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import logging
 
@@ -11,11 +8,11 @@ from models.schemas import (
     PreprocessingResponse,
     TaskActionResponse
 )
-from services.preprocessing_service import PreprocessingService
+from services import get_preprocessing_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-preprocessing_service = PreprocessingService()
+preprocessing_service = get_preprocessing_service()
 
 
 @router.post("/split", response_model=PreprocessingResponse, summary="数据集分割")

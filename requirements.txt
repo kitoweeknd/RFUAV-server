@@ -1,24 +1,35 @@
-python >= 3.9
-opencv-python >= 4.9.0.80
-numpy >= 1.24.4
-matplotlib >= 3.9.2
-opencv-python-headless >= 4.9.0.80
-pillow >= 10.4.0
-scipy >= 1.13.1
-imageio >= 2.36.0
-seaborn >= 0.13.2
-pandas >= 2.2.3
-colorama >= 0.4.6
-psutil >= 6.1.0
-pyyaml >= 6.0.2
-six >= 1.16.0
-tqdm >= 4.67.1
-thop >= 0.1.1.post2209072238
+fastapi==0.104.0
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6           
+pydantic==2.9.2             
+pydantic-settings==2.9.1  
+python-dotenv==1.0.0              
+requests==2.23.5
 
+opencv-python==4.9.0.80
+numpy==1.24.4
+matplotlib==3.9.2
+opencv-python-headless==4.9.0.80
+pillow==10.4.0
+scipy==1.13.1
+imageio==2.36.0
+seaborn==0.13.2
+pandas==2.2.3
+colorama==0.4.6
+psutil==6.1.0
+pyyaml==6.0.2
+six==1.16.0
+tqdm==4.67.1
+thop==0.1.1.post2209072238
 
+# gpu
+torch==2.0.1
+torchvision==0.15.2
+torchaudio==2.0.2
 
-torch >= 2.0.1
-torchvision >= 0.15.2
-torchaudio >=2.0.2
+# cpu
+torch==2.8.0
+torchvision==0.23.0
+torchaudio==2.8.0
 
-albumentations >= 1.4.20
+albumentations==1.4.20

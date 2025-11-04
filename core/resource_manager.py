@@ -1,6 +1,3 @@
-"""
-资源管理器
-"""
 import threading
 import torch
 from collections import defaultdict

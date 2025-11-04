@@ -1,6 +1,3 @@
-"""
-数据预处理服务
-"""
 import logging
 import os
 import traceback
@@ -22,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 class PreprocessingService(BaseService):
-    """数据预处理服务"""
     
     def __init__(self):
         super().__init__()
@@ -32,15 +28,11 @@ class PreprocessingService(BaseService):
         request: DatasetSplitRequest,
         background_tasks: BackgroundTasks
     ) -> str:
-        """启动数据集分割任务"""
-        # 生成任务ID
         task_id = self.generate_task_id(request.task_id)
         
-        # 检查输入路径
         if not os.path.exists(request.input_path):
             raise FileNotFoundError(f"输入路径不存在: {request.input_path}")
         
-        # 初始化任务状态
         self.update_task_status(
             task_id,
             "pending",
@@ -60,7 +52,6 @@ class PreprocessingService(BaseService):
         return task_id
     
     def _split_worker(self, task_id: str, request: DatasetSplitRequest):
-        """数据集分割工作线程"""
         try:
             # 创建日志队列
             self.create_log_queue(task_id)
@@ -68,12 +59,10 @@ class PreprocessingService(BaseService):
             self.update_task_status(task_id, "running", "正在分割数据集...", 0)
             self.add_log(task_id, "INFO", f"开始分割数据集: {request.input_path}")
             
-            # 创建输出目录
             if not os.path.exists(request.output_path):
                 os.makedirs(request.output_path)
                 self.add_log(task_id, "INFO", f"创建输出目录: {request.output_path}")
-            
-            # 统计信息
+
             stats = {
                 "total_images": 0,
                 "train_images": 0,
@@ -82,7 +71,6 @@ class PreprocessingService(BaseService):
                 "classes": []
             }
             
-            # 获取所有类别
             classes = [d for d in os.listdir(request.input_path) 
                       if os.path.isdir(os.path.join(request.input_path, d))]
             stats["classes"] = classes
@@ -90,14 +78,13 @@ class PreprocessingService(BaseService):
             self.add_log(task_id, "INFO", f"检测到 {len(classes)} 个类别")
             
             for idx, drone_type in enumerate(classes):
-                # 创建输出目录
                 train_path = os.path.join(os.path.join(request.output_path, 'train'), drone_type)
                 val_path = os.path.join(os.path.join(request.output_path, 'valid'), drone_type)
                 
                 os.makedirs(train_path, exist_ok=True)
                 os.makedirs(val_path, exist_ok=True)
                 
-                # 如果需要test集
+                # 如果需要test集，这个接口不用但先保留
                 if request.val_ratio:
                     test_path = os.path.join(os.path.join(request.output_path, 'test'), drone_type)
                     os.makedirs(test_path, exist_ok=True)
@@ -114,8 +101,8 @@ class PreprocessingService(BaseService):
                 total = len(image_files)
                 stats["total_images"] += total
                 
+                # 不用，但先保留
                 if request.val_ratio:
-                    # 三分割：train/val/test
                     num_train = int(total * request.train_ratio)
                     num_val = int(total * request.val_ratio)
                     
@@ -151,7 +138,6 @@ class PreprocessingService(BaseService):
                         f"{drone_type}: {len(train_files)} train, {len(val_files)} val, {len(test_files)} test"
                     )
                 else:
-                    # 二分割：train/val
                     num_train = int(total * request.train_ratio)
                     
                     train_files = image_files[:num_train]
@@ -160,7 +146,6 @@ class PreprocessingService(BaseService):
                     stats["train_images"] += len(train_files)
                     stats["val_images"] += len(val_files)
                     
-                    # 复制文件
                     for img in train_files:
                         shutil.copy(
                             os.path.join(class_path, img),
@@ -178,11 +163,9 @@ class PreprocessingService(BaseService):
                         f"{drone_type}: {len(train_files)} train, {len(val_files)} val"
                     )
                 
-                # 更新进度
                 progress = int(((idx + 1) / len(classes)) * 100)
                 self.update_task_status(task_id, "running", f"处理中 ({idx+1}/{len(classes)})", progress)
             
-            # 保存统计信息到任务
             self.update_task_status(task_id, "completed", "数据集分割完成", 100, stats=stats)
             self.add_log(task_id, "INFO", f"分割完成！总计 {stats['total_images']} 张图像")
             self.add_log(task_id, "INFO", f"训练集: {stats['train_images']}, 验证集: {stats['val_images']}")
@@ -202,15 +185,11 @@ class PreprocessingService(BaseService):
         request: DataAugmentationRequest,
         background_tasks: BackgroundTasks
     ) -> str:
-        """启动数据增强任务"""
-        # 生成任务ID
         task_id = self.generate_task_id(request.task_id)
         
-        # 检查数据集路径
         if not os.path.exists(request.dataset_path):
             raise FileNotFoundError(f"数据集路径不存在: {request.dataset_path}")
         
-        # 初始化任务状态
         self.update_task_status(
             task_id,
             "pending",
@@ -222,14 +201,12 @@ class PreprocessingService(BaseService):
             methods=request.methods
         )
         
-        # 在后台执行增强
         background_tasks.add_task(self._augment_worker, task_id, request)
         
         logger.info(f"数据增强任务已创建: {task_id}")
         return task_id
     
     def _augment_worker(self, task_id: str, request: DataAugmentationRequest):
-        """数据增强工作线程"""
         try:
             # 创建日志队列
             self.create_log_queue(task_id)
@@ -372,15 +349,11 @@ class PreprocessingService(BaseService):
         request: ImageCropRequest,
         background_tasks: BackgroundTasks
     ) -> str:
-        """启动图像裁剪任务"""
-        # 生成任务ID
         task_id = self.generate_task_id(request.task_id)
         
-        # 检查输入路径
         if not os.path.exists(request.input_path):
             raise FileNotFoundError(f"输入路径不存在: {request.input_path}")
         
-        # 初始化任务状态
         self.update_task_status(
             task_id,
             "pending",
@@ -392,29 +365,24 @@ class PreprocessingService(BaseService):
             crop_params={"x": request.x, "y": request.y, "width": request.width, "height": request.height}
         )
         
-        # 在后台执行裁剪
         background_tasks.add_task(self._crop_worker, task_id, request)
         
         logger.info(f"图像裁剪任务已创建: {task_id}")
         return task_id
     
     def _crop_worker(self, task_id: str, request: ImageCropRequest):
-        """图像裁剪工作线程"""
         try:
-            # 创建日志队列
             self.create_log_queue(task_id)
             
             self.update_task_status(task_id, "running", "正在裁剪图像...", 0)
             self.add_log(task_id, "INFO", f"开始裁剪: {request.input_path}")
             self.add_log(task_id, "INFO", f"裁剪区域: ({request.x}, {request.y}, {request.width}, {request.height})")
             
-            # 创建输出目录
             if not os.path.exists(request.output_path):
                 os.makedirs(request.output_path)
             
             stats = {"total_images": 0, "success": 0, "failed": 0}
             
-            # 如果是单个文件
             if os.path.isfile(request.input_path):
                 try:
                     img = cv2.imread(request.input_path)
@@ -434,22 +402,18 @@ class PreprocessingService(BaseService):
                     stats["failed"] = 1
                     self.add_log(task_id, "ERROR", f"裁剪失败: {str(e)}")
             
-            # 如果是目录
             else:
-                # 递归处理目录
                 for root, dirs, files in os.walk(request.input_path):
                     for file in files:
                         if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp')):
                             try:
                                 input_file = os.path.join(root, file)
                                 
-                                # 保持目录结构
                                 rel_path = os.path.relpath(root, request.input_path)
                                 output_dir = os.path.join(request.output_path, rel_path)
                                 if not os.path.exists(output_dir):
                                     os.makedirs(output_dir)
                                 
-                                # 读取并裁剪
                                 img = cv2.imread(input_file)
                                 if img is None:
                                     stats["failed"] += 1
@@ -464,7 +428,6 @@ class PreprocessingService(BaseService):
                                 stats["total_images"] += 1
                                 stats["success"] += 1
                                 
-                                # 更新进度
                                 if stats["total_images"] % 10 == 0:
                                     self.add_log(task_id, "INFO", f"已处理 {stats['total_images']} 张图像")
                                 
@@ -486,7 +449,6 @@ class PreprocessingService(BaseService):
             self.add_log(task_id, "ERROR", error_msg)
     
     def _get_default_augmentation_methods(self) -> List:
-        """获取默认的数据增强方法"""
         return [
             A.AdvancedBlur(
                 blur_limit=(7, 13),
@@ -521,7 +483,6 @@ class PreprocessingService(BaseService):
         ]
     
     def _get_augmentation_methods(self, method_names: List[str]) -> List:
-        """根据名称获取增强方法"""
         methods = []
         method_map = {
             "AdvancedBlur": A.AdvancedBlur(

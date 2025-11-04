@@ -1,16 +1,12 @@
-"""
-训练路由
-"""
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 import logging
 
 from models.schemas import TrainingRequest, TaskResponse, TaskActionResponse
-from services.training_service import TrainingService
+from services import get_training_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-training_service = TrainingService()
-
+training_service = get_training_service()
 
 @router.post("/start", response_model=TaskResponse, summary="启动训练任务")
 async def start_training(
@@ -53,10 +49,12 @@ async def get_training_status(task_id: str):
       - val_acc: 验证准确率
       - macro_f1: Macro F1分数
       - micro_f1: Micro F1分数
+      - macro_precision: Macro精确度
+      - macro_recall: Macro召回率
+      - micro_precision: Micro精确度
+      - micro_recall: Micro召回率
       - mAP: 平均精度
       - top1_acc, top3_acc, top5_acc: Top-k准确率
-      - precision: 精确度
-      - recall: 召回率
       - learning_rate: 当前学习率
       - best_acc: 最佳准确率
     """

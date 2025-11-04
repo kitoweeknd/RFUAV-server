@@ -1,6 +1,3 @@
-"""
-推理服务
-"""
 import logging
 import os
 import traceback
@@ -18,8 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class InferenceService(BaseService):
-    """推理服务"""
-    
     def __init__(self):
         super().__init__()
     
@@ -27,9 +22,7 @@ class InferenceService(BaseService):
         self,
         request: InferenceRequest,
         background_tasks: BackgroundTasks
-    ) -> str:
-        """启动推理任务"""
-        # 生成任务ID
+    ) -> str:        # 生成任务ID
         task_id = self.generate_task_id(request.task_id)
         
         # 检查文件
@@ -40,7 +33,6 @@ class InferenceService(BaseService):
         if not os.path.exists(request.source_path):
             raise FileNotFoundError(f"数据路径不存在: {request.source_path}")
         
-        # 初始化任务状态
         self.update_task_status(
             task_id,
             "pending",
@@ -51,7 +43,6 @@ class InferenceService(BaseService):
             priority=request.priority
         )
         
-        # 在后台执行推理
         background_tasks.add_task(self._inference_worker, task_id, request)
         
         logger.info(f"推理任务已创建: {task_id}")
@@ -62,11 +53,9 @@ class InferenceService(BaseService):
         request: BatchInferenceRequest,
         background_tasks: BackgroundTasks
     ) -> List[str]:
-        """启动批量推理任务"""
         task_ids = []
         
         for idx, source_path in enumerate(request.source_paths):
-            # 为每个数据集创建一个推理请求
             infer_request = InferenceRequest(
                 cfg_path=request.cfg_path,
                 weight_path=request.weight_path,
@@ -84,14 +73,11 @@ class InferenceService(BaseService):
         return task_ids
     
     def _inference_worker(self, task_id: str, request: InferenceRequest):
-        """推理工作线程"""
         device = request.device
         
         try:
-            # 创建日志队列
             self.create_log_queue(task_id)
             
-            # 等待资源
             self.update_task_status(task_id, "queued", "等待资源...", 0)
             self.add_log(task_id, "INFO", f"等待{device.upper()}资源...")
             
@@ -100,18 +86,15 @@ class InferenceService(BaseService):
                 logger.info(f"推理任务 {task_id} 等待 {device} 资源...")
                 threading.Event().wait(1)
             
-            # 分配资源（可能会自动选择具体GPU）
             actual_device = resource_manager.allocate(device, "inference", task_id)
             self.update_task_status(task_id, "running", "推理中...", 0, device=actual_device)
             self.add_log(task_id, "INFO", f"资源已分配，使用设备: {actual_device}")
             self.add_log(task_id, "INFO", "开始推理...")
             
-            # 加载配置并设置设备（使用实际分配的设备）
             with open(request.cfg_path, 'r', encoding='utf-8') as f:
                 cfg = yaml.safe_load(f)
             cfg['device'] = actual_device  # 使用实际分配的设备
             
-            # 创建临时配置文件
             with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False, encoding='utf-8') as tmp_cfg:
                 yaml.dump(cfg, tmp_cfg, allow_unicode=True)
                 tmp_cfg_path = tmp_cfg.name
@@ -140,7 +123,6 @@ class InferenceService(BaseService):
             self.update_task_status(task_id, "failed", error_msg, 0)
             self.add_log(task_id, "ERROR", error_msg)
         finally:
-            # 释放资源（使用实际分配的设备）
             actual_device = self.get_task(task_id).get("device", device)
             resource_manager.release(actual_device, "inference", task_id)
 

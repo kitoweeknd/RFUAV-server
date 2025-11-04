@@ -88,7 +88,7 @@ class TaskResponse(BaseModel):
     # 训练详细指标（仅训练任务使用）
     current_epoch: Optional[int] = None
     total_epochs: Optional[int] = None
-    latest_metrics: Optional[TrainingMetrics] = None
+    latest_metrics: Optional['TrainingMetrics'] = None
 
 
 class TaskListResponse(BaseModel):
@@ -190,9 +190,15 @@ class TrainingMetrics(BaseModel):
     top3_acc: Optional[float] = Field(None, description="Top-3准确率")
     top5_acc: Optional[float] = Field(None, description="Top-5准确率")
     
-    # 精确度和召回率
-    precision: Optional[float] = Field(None, description="精确度")
-    recall: Optional[float] = Field(None, description="召回率")
+    # 精确度和召回率（宏平均和微平均）
+    macro_precision: Optional[float] = Field(None, description="Macro精确度")
+    macro_recall: Optional[float] = Field(None, description="Macro召回率")
+    micro_precision: Optional[float] = Field(None, description="Micro精确度")
+    micro_recall: Optional[float] = Field(None, description="Micro召回率")
+    
+    # 兼容旧版本（precision和recall作为别名）
+    precision: Optional[float] = Field(None, description="精确度（通常指macro_precision）")
+    recall: Optional[float] = Field(None, description="召回率（通常指macro_recall）")
     
     # 其他信息
     learning_rate: Optional[float] = Field(None, description="当前学习率")
@@ -204,7 +210,7 @@ class DetailedLogEntry(BaseModel):
     timestamp: str = Field(..., description="时间戳")
     level: str = Field(..., description="日志级别")
     message: str = Field(..., description="日志消息")
-    metrics: Optional[TrainingMetrics] = Field(None, description="训练指标")
+    metrics: Optional['TrainingMetrics'] = Field(None, description="训练指标")
     step: Optional[int] = Field(None, description="训练步数")
     stage: Optional[str] = Field(None, description="训练阶段 (epoch_start/training/validation/epoch_end/completed)")
 
@@ -216,7 +222,7 @@ class TrainingStatusResponse(BaseModel):
     progress: int
     current_epoch: Optional[int] = None
     total_epochs: Optional[int] = None
-    latest_metrics: Optional[TrainingMetrics] = None
+    latest_metrics: Optional['TrainingMetrics'] = None
     device: Optional[str] = None
     created_at: str
     updated_at: str

@@ -1,6 +1,3 @@
-"""
-资源管理路由
-"""
 from fastapi import APIRouter, HTTPException
 import logging
 

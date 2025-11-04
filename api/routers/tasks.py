@@ -1,15 +1,12 @@
-"""
-任务管理路由
-"""
 from fastapi import APIRouter, HTTPException
 import logging
 
 from models.schemas import TaskListResponse, TaskResponse, TaskActionResponse
-from services.task_service import TaskService
+from services import get_task_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-task_service = TaskService()
+task_service = get_task_service()
 
 
 @router.get("", response_model=TaskListResponse, summary="获取所有任务")

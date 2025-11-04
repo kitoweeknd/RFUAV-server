@@ -13,6 +13,7 @@ import sys
 import cv2
 import numpy as np
 from torch.utils.data import DataLoader
+from scipy.optimize import linear_sum_assignment
 
 try:
     from DetModels import YOLOV5S
@@ -246,7 +247,7 @@ class Classify_Model(nn.Module):
                    res,
                    image,
                    position=(40, 40),
-                   font="arial.ttf",
+                   font="asset/NotoSerifCJK-VF.otf.ttc",
                    font_size=45,
                    text_color=(255, 0, 0),
                    probability=0.0

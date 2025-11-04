@@ -581,7 +581,7 @@ curl -X POST "http://localhost:8000/api/v2/training/{task_id}/stop"
 ```json
 {
   "cfg_path": "configs/model.yaml",
-  "weight_path": "models/best.pth",
+  "weight_path": "models/best.pth",fres
   "source_path": "data/test",
   "save_path": "results/",
   "device": "cuda",

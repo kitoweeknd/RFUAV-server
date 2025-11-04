@@ -79,6 +79,36 @@ class TrainingLogHandler(logging.Handler):
                 metrics["micro_f1"] = float(match.group(1))
                 stage = "validation"
         
+        elif "Validation macro_Precision:" in message:
+            match = re.search(r"Validation macro_Precision: ([\d.]+)", message)
+            if match:
+                metrics["macro_precision"] = float(match.group(1))
+                stage = "validation"
+        
+        elif "Validation macro_Recall:" in message:
+            match = re.search(r"Validation macro_Recall: ([\d.]+)", message)
+            if match:
+                metrics["macro_recall"] = float(match.group(1))
+                stage = "validation"
+        
+        elif "Validation micro_Precision:" in message:
+            match = re.search(r"Validation micro_Precision: ([\d.]+)", message)
+            if match:
+                metrics["micro_precision"] = float(match.group(1))
+                stage = "validation"
+        
+        elif "Validation micro_Recall:" in message:
+            match = re.search(r"Validation micro_Recall: ([\d.]+)", message)
+            if match:
+                metrics["micro_recall"] = float(match.group(1))
+                stage = "validation"
+        
+        elif "Learning Rate:" in message:
+            match = re.search(r"Learning Rate: ([\d.]+)", message)
+            if match:
+                metrics["learning_rate"] = float(match.group(1))
+                stage = "training"
+        
         elif "Validation mAP:" in message:
             match = re.search(r"Validation mAP: ([\d.]+)", message)
             if match:
@@ -117,7 +147,10 @@ class TrainingLogHandler(logging.Handler):
             # 更新任务进度
             if self.current_epoch is not None and self.total_epochs is not None and self.total_epochs > 0:
                 progress = int((self.current_epoch / self.total_epochs) * 100)
-                self.service.update_task_status(self.task_id, progress=progress)
+                # 获取当前任务状态，如果不存在则默认为 "running"
+                current_task = self.service.get_task(self.task_id)
+                current_status = current_task.get("status", "running") if current_task else "running"
+                self.service.update_task_status(self.task_id, current_status, progress=progress)
 
         # 添加日志到队列（包含指标信息）
         self.service.add_log(
@@ -130,9 +163,7 @@ class TrainingLogHandler(logging.Handler):
         )
 
 
-class TrainingService(BaseService):
-    """训练服务"""
-    
+class TrainingService(BaseService):    
     def __init__(self):
         super().__init__()
         self.latest_metrics: Dict[str, TrainingMetrics] = {}  # 存储每个任务的最新指标
@@ -142,21 +173,16 @@ class TrainingService(BaseService):
         request: TrainingRequest,
         background_tasks: BackgroundTasks
     ) -> str:
-        """启动训练任务"""
-        # 生成任务ID
         task_id = self.generate_task_id(request.task_id)
         
-        # 验证模型
         if request.model not in settings.SUPPORTED_MODELS:
             raise ValueError(f"不支持的模型: {request.model}")
         
-        # 检查路径
         if not os.path.exists(request.train_path):
             raise FileNotFoundError(f"训练集路径不存在: {request.train_path}")
         if not os.path.exists(request.val_path):
             raise FileNotFoundError(f"验证集路径不存在: {request.val_path}")
         
-        # 初始化任务状态
         self.update_task_status(
             task_id,
             "pending",
@@ -169,37 +195,28 @@ class TrainingService(BaseService):
             total_epochs=request.num_epochs
         )
         
-        # 初始化指标
         self.latest_metrics[task_id] = TrainingMetrics(total_epochs=request.num_epochs)
-        
-        # 在后台执行训练
         background_tasks.add_task(self._train_worker, task_id, request)
         
         logger.info(f"训练任务已创建: {task_id}")
         return task_id
     
     def _train_worker(self, task_id: str, request: TrainingRequest):
-        """训练工作线程"""
         device = request.device
         
-        # 获取训练器logger并添加自定义处理器
         trainer_logger = logging.getLogger('Train')
         
-        # 移除可能存在的旧handler，避免重复日志
         for handler in list(trainer_logger.handlers):
             if isinstance(handler, TrainingLogHandler) and handler.task_id == task_id:
                 trainer_logger.removeHandler(handler)
         
-        # 添加自定义日志处理器
         log_handler = TrainingLogHandler(task_id, self)
         trainer_logger.addHandler(log_handler)
         trainer_logger.setLevel(logging.INFO)
         
         try:
-            # 创建日志队列
             self.create_log_queue(task_id)
             
-            # 等待资源
             self.update_task_status(task_id, "queued", "等待资源...", 0)
             self.add_log(task_id, "INFO", f"等待{device.upper()}资源...")
             
@@ -208,13 +225,11 @@ class TrainingService(BaseService):
                 logger.info(f"任务 {task_id} 等待 {device} 资源...")
                 threading.Event().wait(2)
             
-            # 分配资源（可能会自动选择具体GPU）
             actual_device = resource_manager.allocate(device, "training", task_id)
             self.update_task_status(task_id, "running", "训练中...", 0, device=actual_device)
             self.add_log(task_id, "INFO", f"资源已分配，使用设备: {actual_device}")
             self.add_log(task_id, "INFO", "开始训练...")
             
-            # 创建保存目录
             os.makedirs(request.save_path, exist_ok=True)
             
             self.add_log(task_id, "INFO", f"模型: {request.model}")
@@ -222,7 +237,11 @@ class TrainingService(BaseService):
             self.add_log(task_id, "INFO", f"批次大小: {request.batch_size}")
             self.add_log(task_id, "INFO", f"训练轮数: {request.num_epochs}")
             
-            # 创建训练器（使用实际分配的设备）
+            def check_cancelled():
+                """检查任务是否被取消"""
+                task = self.get_task(task_id)
+                return task is not None and task.get("status") == "cancelled"
+            
             trainer = Basetrainer(
                 model=request.model,
                 train_path=request.train_path,
@@ -230,35 +249,44 @@ class TrainingService(BaseService):
                 num_class=request.num_classes,
                 save_path=request.save_path,
                 weight_path=request.weight_path,
-                device=actual_device,  # 使用实际分配的设备
+                device=actual_device,
                 batch_size=request.batch_size,
                 shuffle=request.shuffle,
                 image_size=request.image_size,
                 lr=request.learning_rate,
-                pretrained=request.pretrained
+                pretrained=request.pretrained,
+                check_cancelled=check_cancelled
             )
             
-            # 开始训练
-            trainer.train(num_epochs=request.num_epochs)
-            
-            self.update_task_status(task_id, "completed", "训练完成", 100)
-            self.add_log(task_id, "INFO", "训练完成！")
-            logger.info(f"任务 {task_id} 训练完成")
-            
-        except Exception as e:
-            error_msg = f"训练失败: {str(e)}"
-            logger.error(f"任务 {task_id} 失败: {error_msg}\n{traceback.format_exc()}")
-            self.update_task_status(task_id, "failed", error_msg, 0)
-            self.add_log(task_id, "ERROR", error_msg)
+            try:
+                trainer.train(num_epochs=request.num_epochs)
+                if check_cancelled():
+                    self.update_task_status(task_id, "cancelled", "训练已被用户取消", 
+                                          self.get_task(task_id).get("progress", 0))
+                    self.add_log(task_id, "INFO", "训练已被用户取消")
+                    logger.info(f"任务 {task_id} 已被取消")
+                else:
+                    self.update_task_status(task_id, "completed", "训练完成", 100)
+                    self.add_log(task_id, "INFO", "训练完成！")
+                    logger.info(f"任务 {task_id} 训练完成")
+            except Exception as e:
+                from utils.trainer import TrainingCancelled
+                if isinstance(e, TrainingCancelled):
+                    self.update_task_status(task_id, "cancelled", "训练已被用户取消", 
+                                          self.get_task(task_id).get("progress", 0))
+                    self.add_log(task_id, "INFO", "训练已被用户取消")
+                    logger.info(f"任务 {task_id} 已被取消")
+                else:
+                    error_msg = f"训练失败: {str(e)}"
+                    logger.error(f"任务 {task_id} 失败: {error_msg}\n{traceback.format_exc()}")
+                    self.update_task_status(task_id, "failed", error_msg, 0)
+                    self.add_log(task_id, "ERROR", error_msg)
         finally:
-            # 释放资源（使用实际分配的设备）
             actual_device = self.get_task(task_id).get("device", device)
             resource_manager.release(actual_device, "training", task_id)
-            # 移除自定义日志处理器
             trainer_logger.removeHandler(log_handler)
     
     def stop_task(self, task_id: str) -> bool:
-        """停止训练任务"""
         task = self.get_task(task_id)
         if not task:
             return False
@@ -271,9 +299,7 @@ class TrainingService(BaseService):
         return False
     
     def update_task_metrics(self, task_id: str, metrics: TrainingMetrics):
-        """更新任务的最新指标"""
         if task_id in self.latest_metrics:
-            # 合并新旧指标
             existing_metrics = self.latest_metrics[task_id].model_dump(exclude_none=True)
             new_metrics = metrics.model_dump(exclude_none=True)
             updated_metrics_dict = {**existing_metrics, **new_metrics}
@@ -281,10 +307,8 @@ class TrainingService(BaseService):
         else:
             self.latest_metrics[task_id] = metrics
         
-        # 更新任务状态中的latest_metrics和current_epoch
         task = self.get_task(task_id)
         if task:
             task["latest_metrics"] = self.latest_metrics[task_id].model_dump(exclude_none=True)
             task["current_epoch"] = self.latest_metrics[task_id].epoch
-            self.tasks[task_id] = task  # 确保更新到内存中的任务字典
-
+            self.tasks[task_id] = task 

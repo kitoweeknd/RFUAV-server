@@ -45,6 +45,11 @@ sys.path.append(METRIC)
 TQDM_BAR_FORMAT = '{l_bar}{bar:10}{r_bar}'
 
 
+class TrainingCancelled(Exception):
+    """训练被取消的异常"""
+    pass
+
+
 class Basetrainer:
 
     """
@@ -83,7 +88,8 @@ class Basetrainer:
                  batch_size: int = 8,
                  shuffle: bool = False,
                  image_size: int = 224,
-                 lr: float = 0.0001
+                 lr: float = 0.0001,
+                 check_cancelled: callable = None
                  ):
 
         self.batch_size = batch_size
@@ -99,6 +105,7 @@ class Basetrainer:
         self.lr = lr
         self.logger = self.set_logger(os.path.join(save_path, log_file))
         self.criterion = criterion  # initializing the loss function
+        self.check_cancelled = check_cancelled  # 检查取消状态的函数
         self.set_up(model=model, train_path=train_path, val_path=val_path,
                     pretrained=pretrained, weight_path=weight_path)
 
@@ -154,12 +161,27 @@ class Basetrainer:
     @abstractmethod
     def train(self, num_epochs):
         for epoch in range(num_epochs):
+            # 检查是否被取消
+            if self.check_cancelled and self.check_cancelled():
+                self.logger.log_with_color("训练已被取消")
+                raise TrainingCancelled("训练任务已被用户取消")
+            
             self.logger.log_with_color(f"Epoch [{epoch + 1}/{num_epochs}] started.")
             self.model.train()
             running_loss = 0.0
             correct = 0
             total = 0
-            for images, labels in self.train_set:
+            
+            # 在批次循环中也可以定期检查
+            batch_check_interval = max(1, len(self.train_set) // 10)  # 每10%的批次检查一次
+            
+            for batch_idx, (images, labels) in enumerate(self.train_set):
+                # 定期检查取消状态
+                if self.check_cancelled and batch_idx % batch_check_interval == 0:
+                    if self.check_cancelled():
+                        self.logger.log_with_color("训练已被取消")
+                        raise TrainingCancelled("训练任务已被用户取消")
+                
                 images, labels = images.to(self.device), labels.to(self.device)
                 self.optimizer.zero_grad()
 
@@ -176,13 +198,19 @@ class Basetrainer:
                 _, predicted = outputs.max(1)
                 total += labels.size(0)
                 correct += predicted.eq(labels).sum().item()
+            
+            # Epoch结束时再次检查
+            if self.check_cancelled and self.check_cancelled():
+                self.logger.log_with_color("训练已被取消")
+                raise TrainingCancelled("训练任务已被用户取消")
+            
             train_loss = running_loss / len(self.train_set)
             train_acc = 100 * correct / total
             self.logger.log_with_color(
                 f'Epoch [{epoch + 1}/{num_epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_acc:.2f}%')
             metrics = self.val
-            self.logger.log_with_color(f'Validation Loss: {metrics["loss"]:.4f}, Validation Accuracy: {metrics["acc"]:.2f}%')
-            self.save_model(metrics['acc'], epoch)
+            self.logger.log_with_color(f'Validation Loss: {metrics["total_loss"]:.4f}, Validation Accuracy: {metrics["acc"]:.2f}%')
+            self.save_model(metrics, epoch)
 
     @property
     def val(self):
@@ -392,12 +420,27 @@ class CustomTrainer(Basetrainer):
         num_epochs = self.parameters['num_epochs']
 
         for epoch in range(num_epochs):
+            # 检查是否被取消
+            if self.check_cancelled and self.check_cancelled():
+                self.logger.log_with_color("训练已被取消")
+                raise TrainingCancelled("训练任务已被用户取消")
+            
             self.logger.log_with_color(f"Epoch [{epoch + 1}/{num_epochs}] started.")
             self.model.train()
             running_loss = 0.0
             correct = 0
             total = 0
-            for images, labels in self.train_set:
+            
+            # 在批次循环中也可以定期检查
+            batch_check_interval = max(1, len(self.train_set) // 10)
+            
+            for batch_idx, (images, labels) in enumerate(self.train_set):
+                # 定期检查取消状态
+                if self.check_cancelled and batch_idx % batch_check_interval == 0:
+                    if self.check_cancelled():
+                        self.logger.log_with_color("训练已被取消")
+                        raise TrainingCancelled("训练任务已被用户取消")
+                
                 images, labels = images.to(self.device), labels.to(self.device)
                 self.optimizer.zero_grad()
 
@@ -414,15 +457,38 @@ class CustomTrainer(Basetrainer):
                 _, predicted = outputs.max(1)
                 total += labels.size(0)
                 correct += predicted.eq(labels).sum().item()
+            
+            # Epoch结束时再次检查
+            if self.check_cancelled and self.check_cancelled():
+                self.logger.log_with_color("训练已被取消")
+                raise TrainingCancelled("训练任务已被用户取消")
+            
             train_loss = running_loss / len(self.train_set)
             train_acc = 100 * correct / total
+            
+            # 获取当前学习率
+            current_lr = self.optimizer.param_groups[0]['lr']
+            
             self.logger.log_with_color(
                 f'Epoch [{epoch + 1}/{num_epochs}], Train Loss: {train_loss:.4f}, Train Accuracy: {train_acc:.2f}%')
+            self.logger.log_with_color(f' Learning Rate: {current_lr:.6f}')
+            
             metrics = self.val
             self.logger.log_with_color(f' Validation Loss: {metrics["total_loss"]:.4f},')
             self.logger.log_with_color(f' Validation Accuracy: {metrics["acc"]:.2f}%,')
             self.logger.log_with_color(f' Validation macro_F1: {metrics["f1"]["macro_f1"]}')
             self.logger.log_with_color(f' Validation micro_F1: {metrics["f1"]["micro_f1"]}')
+            
+            # 输出 precision 和 recall
+            if "macro_precision" in metrics["f1"]:
+                self.logger.log_with_color(f' Validation macro_Precision: {metrics["f1"]["macro_precision"]}')
+            if "macro_recall" in metrics["f1"]:
+                self.logger.log_with_color(f' Validation macro_Recall: {metrics["f1"]["macro_recall"]}')
+            if "micro_precision" in metrics["f1"]:
+                self.logger.log_with_color(f' Validation micro_Precision: {metrics["f1"]["micro_precision"]}')
+            if "micro_recall" in metrics["f1"]:
+                self.logger.log_with_color(f' Validation micro_Recall: {metrics["f1"]["micro_recall"]}')
+            
             self.logger.log_with_color(f' Validation mAP: {metrics["mAP"]["mAP"]}')
             self.logger.log_with_color(f' Validation Top-k Accuracy: {metrics["Top-k"]}')
 

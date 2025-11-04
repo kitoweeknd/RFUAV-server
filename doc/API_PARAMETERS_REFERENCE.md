@@ -651,16 +651,3 @@ def monitor_resources():
 | `503` | 服务不可用 |
 
 ---
-
-## 更多信息
-
-- **完整文档**: [README_COMPLETE.md](README_COMPLETE.md)
-- **快速参考**: [QUICK_REFERENCE.md](QUICK_REFERENCE.md)
-- **在线API文档**: http://localhost:8000/docs
-
----
-
-**版本**: V2.3.1  
-**最后更新**: 2024-01
-
-
